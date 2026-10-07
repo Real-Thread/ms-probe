@@ -154,6 +154,7 @@ class PackageTests(unittest.TestCase):
                 self.assertEqual(config.syms["RT_USING_MICROSCOPE"].str_value, "y")
                 self.assertEqual(config.syms["PKG_MS_PROBE_PATH"].str_value, "/packages/tools/ms-probe")
                 self.assertEqual(config.syms["PKG_MS_PROBE_VER"].str_value, "latest")
+                self.assertEqual(config.syms["PKG_USING_MS_PROBE_LATEST_VERSION"].str_value, "y")
                 config.syms["RT_USING_SCOPE"].set_value("y")
                 config.syms["RT_USING_STACK_BACKTRACE"].set_value("y")
                 config.syms["RT_USING_COREDUMP"].set_value("y")
@@ -169,6 +170,27 @@ class PackageTests(unittest.TestCase):
                 config.syms["RT_USING_MICROSCOPE"].set_value("y")
                 self.assertEqual(config.syms["RT_USING_SCOPE"].str_value, "y")
                 self.assertEqual(config.syms[port].str_value, "y")
+
+    @unittest.skipUnless(importlib.util.find_spec("kconfiglib"), "Install tests/requirements.txt")
+    def test_index_can_load_options_without_duplicate_package_menu(self):
+        import kconfiglib
+
+        with tempfile.TemporaryDirectory() as temporary:
+            wrapper = Path(temporary) / "Kconfig"
+            wrapper.write_text(
+                'config PKG_USING_MS_PROBE\n    bool "ms-probe"\n'
+                'if PKG_USING_MS_PROBE\n'
+                'rsource "{}"\nendif\n'.format(ROOT / "Kconfig.options"), encoding="utf-8",
+            )
+            config = kconfiglib.Kconfig(str(wrapper), warn=False)
+            config.syms["PKG_USING_MS_PROBE"].set_value("y")
+            self.assertEqual(config.syms["RT_USING_MICROSCOPE"].str_value, "y")
+            config.syms["RT_USING_SCOPE"].set_value("y")
+            self.assertEqual(config.syms["RT_USING_SCOPE"].str_value, "y")
+            self.assertEqual(len(config.syms["PKG_USING_MS_PROBE"].nodes), 1)
+            config.syms["PKG_USING_MS_PROBE"].set_value("n")
+            self.assertEqual(config.syms["RT_USING_MICROSCOPE"].str_value, "n")
+            self.assertEqual(config.syms["RT_USING_SCOPE"].str_value, "n")
 
 
 if __name__ == "__main__":

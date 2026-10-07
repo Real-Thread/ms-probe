@@ -1,0 +1,10 @@
+import os
+from building import *
+
+root = os.environ['MS_PROBE_ROOT']
+cwd = GetCurrentDir()
+src = Glob('*.c') + Glob('*.S') + [os.path.join(root, 'src', 'ms_probe.c')]
+group = DefineGroup('MsProbeQemuTest', src, depend=[''],
+                    CPPPATH=[os.path.join(root, 'include')],
+                    LINKFLAGS=' -Wl,--wrap=rt_hw_trap_undef')
+Return('group')

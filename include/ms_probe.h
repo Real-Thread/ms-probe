@@ -57,6 +57,7 @@ extern "C" {
 #define MS_PROBE_ARCH_ARMV7E_M          0x03U
 #define MS_PROBE_ARCH_ARMV8_M           0x04U
 #define MS_PROBE_ARCH_ARMV8_R_AARCH32   0x10U
+#define MS_PROBE_ARCH_ARMV7_A           0x11U
 #define MS_PROBE_ARCH_RV32              0x20U
 #define MS_PROBE_ARCH_KUNGFU32          0x30U
 

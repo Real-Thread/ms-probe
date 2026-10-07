@@ -1,0 +1,50 @@
+menu "Microscope"
+
+config RT_USING_MICROSCOPE
+    bool "Enable Microscope diagnostic components"
+    default y if PKG_USING_MS_PROBE
+    default n
+    help
+        Development-only diagnostic components. Disable these components,
+        Scope and Fault injection in production configurations.
+
+if RT_USING_MICROSCOPE
+
+rsource "coredump/Kconfig"
+rsource "backtrace/Kconfig"
+
+menuconfig RT_USING_SCOPE
+    bool "Enable Microscope Scope probe"
+    depends on RT_USING_MICROSCOPE
+    default n
+    help
+        Enable the read-only Microscope Scope diagnostic probe.
+
+if RT_USING_SCOPE
+
+config RT_SCOPE_MAX_PAYLOAD
+    int "Maximum protocol payload"
+    range 64 1020
+    default 256
+
+config RT_SCOPE_MAX_READ_LENGTH
+    int "Maximum bytes per read request"
+    range 1 1048576
+    default 4096
+
+config RT_SCOPE_FRAME_TIMEOUT_MS
+    int "Incomplete frame idle timeout in milliseconds"
+    range 10 10000
+    default 250
+    help
+        Reset the byte-stream parser after an incomplete frame remains idle
+        for this duration. The Fault runner uses the platform monotonic timer,
+        so recovery does not depend on an OS tick or timer interrupt.
+
+rsource "ports/Kconfig"
+
+endif
+
+endif
+
+endmenu

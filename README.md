@@ -22,12 +22,29 @@ Fault 协议核；`ports/ms_scope_baremetal.*` 提供 polling I/O 公共封装�
 | `ports/` | 裸机 polling 封装及 BSP 专用适配 |
 | `arch/`、`backtrace/` | 架构栈回溯适配与公共接口 |
 | `coredump/` | CoreDump 实现、示例和文档 |
-| `Kconfig`、`SConscript` | 软件包配置和 RT-Thread 构建入口 |
+| `Kconfig`、`Kconfig.options`、`SConscript` | 独立配置入口、共享诊断选项和 RT-Thread 构建入口 |
 | `package.json` | 软件包元数据，latest 指向 main 分支 |
-| `tests/` | C89 主机测试及独立软件包检查 |
+| `tests/` | C89 主机测试、独立包检查及开发 QEMU 夹具 |
 | `docs/limitations.md` | 支持边界与验收要求 |
 
 ## RT-Thread 接入
+
+### 软件包索引
+
+索引提交到 `RT-Thread/packages` 的 `tools/ms-probe`。该条目合并并更新本机索引后，
+在 BSP 中执行 `menuconfig`，选择 `RT-Thread online packages -> tools packages -> ms-probe`，
+版本选择 `latest`，保存后执行：
+
+```sh
+pkgs --update
+menuconfig
+```
+
+下载目录为 `packages/ms-probe-latest`。第二次 menuconfig 从包内 `Kconfig.options` 加载
+Microscope、Scope、Backtrace、CoreDump 和 BSP 专用选项，不必手工修改上级 Kconfig。
+索引未合并或本机索引尚未更新时使用下面的直接克隆方式。
+
+### 直接克隆
 
 开发时可在 BSP 工程根目录直接获取软件包：
 
@@ -50,7 +67,7 @@ rsource "packages/ms-probe/Kconfig"
 用 `scons --pyconfig-silent` 生成配置，不手工修改 `rtconfig.h`。
 
 `package.json` 提供 RT-Thread 软件包下载元数据，当前只声明 latest/main，不创建虚构的
-发布标签。本次不包含向公共软件包索引注册的提交；上述直接克隆方式不依赖索引注册。
+发布标签。直接克隆方式不依赖索引注册；索引与源码共享同一份包内诊断配置。
 
 在 Microscope 主机工程中，本包作为 Git submodule 固定版本：
 
@@ -89,6 +106,10 @@ BSP 仍提供 RT-Thread/芯片头文件、串口初始化、时钟、异常向�
 
 ## 验证与边界
 
+Probe 激活以及空闲状态输入 CR、LF 或 CRLF 时，输出 `->\r\n`，即提示符后跟回车和换行
+（字节 `2d 3e 0d 0a`）。CRLF 即使分次输入也只产生一次提示符；连续回车各产生一行。
+二进制帧内的 CR/LF 保持原始数据，不触发提示符。修改本包后需要重新编译并烧录目标固件。
+
 ```sh
 make -C tests test
 python3 -m unittest discover -s tests -p 'test_package.py' -v
@@ -98,6 +119,10 @@ make -C tests clean
 主机 C 测试使用 `-std=c89 -pedantic -Wall -Wextra -Werror`。
 配置检查需要 `kconfiglib`；可使用 Env 的 Python venv，或安装 `tests/requirements.txt`。
 GitHub Actions 在独立检出中执行相同测试，不需要主机插件、固件 ELF 或父仓库。
+
+另提供 [VExpress A9 QEMU 测试夹具](tests/qemu-vexpress-a9/README.md)，用于单核 classic
+系统中真实 UDF 异常后的 polling 协议、回车以及主机 CLI 验证，不是第五个完整 BSP 产品适配。
+该夹具不提供 ARMv7-A Context、Backtrace、Watchdog 或 Reset，不改写 RT-Thread 异常源码。
 
 Fault 路径不得调用 RTOS、设备驱动、锁、堆、日志、阻塞等待或系统 Tick。
 Probe 不恢复业务调度，诊断结束后需要复位。生产构建必须关闭组件和 Fault 注入。
