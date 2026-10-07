@@ -5,14 +5,11 @@ ms-probe 是 Microscope 的独立嵌入式诊断 Probe 仓库和 RT-Thread 软�
 Fault 协议核；`ports/ms_scope_baremetal.*` 提供 polling I/O 公共封装，BSP 专用端口
 负责异常入口、Fault Context 编码、串口、计时、白名单和可选 Watchdog / Reset。
 
-本包不包含独立的设备端 Backtrace、CoreDump 或其 `arch/` 实现。Probe 只固化并导出
-Context 和白名单内存；Microscope 主机 `ms` 根据这些数据和固件 ELF 完成栈回溯，
-并保存 `.mssession` 离线会话。这不等同于设备端生成 ELF core dump。
+Probe 只固化并导出 Context 和白名单内存；Microscope 主机 `ms` 根据这些数据和固件 ELF 完成系列的系统诊断功能。
 
 ## 许可协议
 
-本软件包采用 **GPL-2.0 / 商业双许可**，与 RT-Thread WebNet 软件包的许可方式一致。
-开源许可全文见 [LICENSE](LICENSE)；商业许可可联系 `business@rt-thread.com` 获取，
+本软件包采用 **GPL-2.0 / 商业双许可** 。开源许可全文见 [LICENSE](LICENSE)；商业许可可联系 `business@rt-thread.com` 获取，
 具体授权以独立书面协议为准，见 [商业许可说明](LICENSES/LicenseRef-Commercial.txt)。
 源码保留原版权和变更记录，使用 `GPL-2.0-only OR LicenseRef-Commercial` 标识。
 `package.json` 按 RT-Thread 软件包索引惯例以 `GPL-2.0` 标注开源选项，商业选项由本文和
@@ -68,16 +65,6 @@ rsource "packages/ms-probe/Kconfig"
 既有工程也可继续直接启用 `RT_USING_MICROSCOPE`。Scope Probe 和 Fault 注入默认关闭。
 用 `scons --pyconfig-silent` 生成配置，不手工修改 `rtconfig.h`。
 
-本包不再提供 `RT_USING_STACK_BACKTRACE`、`RT_USING_COREDUMP` 和 `rt_backtrace_*` /
-`coredump_*` 接口。既有工程若需要这些独立组件，应单独获取其实现；不要把它们当作
-Probe 的链接依赖。主机 `ms-cli backtrace` 不要求打开上述设备端开关。
-
-从旧版本迁移时，移除工程中对本包 `arch/`、`backtrace/`、`coredump/` 的 SConscript、
-Kconfig 和 include 路径引用。用 menuconfig 保存配置，再执行 `scons --pyconfig-silent`
-重新生成配置头；不保留旧 `RT_USING_STACK_BACKTRACE`、`RT_STACK_BACKTRACE_DEPTH_MAX`、
-`RT_USING_COREDUMP`、`RT_USING_COREDUMP_TESTCASE` 和 `RT_COREDUMP_ARCH_*` 配置。
-软件包构建入口只加载协议核、裸机封装和匹配的 BSP 端口，不再加载上述目录。
-
 `package.json` 提供 RT-Thread 软件包下载元数据，当前只声明 latest/main，不创建虚构的
 发布标签。直接克隆方式不依赖索引注册；索引与源码共享同一份包内诊断配置。
 
@@ -102,39 +89,8 @@ Kconfig 根据 BSP 标识加载对应默认配置；SCons 仅构建已启用且�
 没有匹配 BSP 时只构建通用协议核与裸机 I/O 封装，调用方通过 `ms_probe_config`
 提供 Fault ops、静态白名单、Context 和独立工作区。
 
-迁移既有 BSP 时，删除 BSP 中原有 `ms_scope_*` 源文件和重复的 Scope Kconfig 定义，
-同时去掉旧 include 路径和链接片段注册，防止重复符号或重复链接。
 BSP 仍提供 RT-Thread/芯片头文件、串口初始化、时钟、异常向量接管和正常启动阶段的
 初始化调用；本组件不包含通用 BSP 驱动、RTOS 或厂商 SDK。
-
-- STM32 和 S32K3 必须保留原 `board.c` 中的早期 Probe 初始化调用。
-- KF32 必须保留串口初始化和 `ms_scope_kf32_probe_init()` 的早期调用，失败时停止启动；
-  仅支持 `RT_CPUS_NR=1`。
-- QEMU 必须保留组件初始化表中的 `ms_scope_rtthread_init()`；
-  `linker_scripts/reference.lds` 是原 BSP 完整链接脚本的参考副本，不自动加入链接。
-  BSP 主链接脚本必须保留其 `SCOPE_RAM`、`.ms_scope_workspace` 和大小断言。
-- STM32、KF32、S32K3 的 Scope 链接片段由组件添加；BSP 主链接脚本必须排除已保留的
-  Scope RAM，不能让正常堆栈、数据或 MPU 配置再次占用该区域。
-
-## 验证与边界
-
-Probe 激活以及空闲状态输入 CR、LF 或 CRLF 时，输出 `->\r\n`，即提示符后跟回车和换行
-（字节 `2d 3e 0d 0a`）。CRLF 即使分次输入也只产生一次提示符；连续回车各产生一行。
-二进制帧内的 CR/LF 保持原始数据，不触发提示符。修改本包后需要重新编译并烧录目标固件。
-
-```sh
-make -C tests test
-python3 -m unittest discover -s tests -p 'test_package.py' -v
-make -C tests clean
-```
-
-主机 C 测试使用 `-std=c89 -pedantic -Wall -Wextra -Werror`。
-配置检查需要 `kconfiglib`；可使用 Env 的 Python venv，或安装 `tests/requirements.txt`。
-GitHub Actions 在独立检出中执行相同测试，不需要主机插件、固件 ELF 或父仓库。
-
-另提供 [VExpress A9 QEMU 测试夹具](tests/qemu-vexpress-a9/README.md)，用于单核 classic
-系统中真实 UDF 异常后的 polling 协议、回车以及主机 CLI 验证，不是第五个完整 BSP 产品适配。
-该夹具不提供 ARMv7-A Context、Backtrace、Watchdog 或 Reset，不改写 RT-Thread 异常源码。
 
 Fault 路径不得调用 RTOS、设备驱动、锁、堆、日志、阻塞等待或系统 Tick。
 Probe 不恢复业务调度，诊断结束后需要复位。生产构建必须关闭组件和 Fault 注入。
