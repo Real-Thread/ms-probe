@@ -1,0 +1,105 @@
+# ms-probe
+
+ms-probe 是 Microscope 的独立嵌入式诊断仓库和 RT-Thread 软件包，包含全部 MCU 端代码，
+可独立克隆、配置和测试，不依赖 Microscope 主机仓库。`src/ms_probe.c` 和 `include/ms_probe.h` 是平台无关的
+Fault 协议核；`ports/ms_scope_baremetal.*` 提供 polling I/O 公共封装；`arch/`、
+`backtrace/`、`coredump/` 提供架构适配、栈回溯和转储实现。
+
+## 许可协议
+
+本软件包采用 **GPL-2.0 / 商业双许可**，与 RT-Thread WebNet 软件包的许可方式一致。
+开源许可全文见 [LICENSE](LICENSE)；商业许可可联系 `business@rt-thread.com` 获取，
+具体授权以独立书面协议为准，见 [商业许可说明](LICENSES/LicenseRef-Commercial.txt)。
+源码保留原版权和变更记录，使用 `GPL-2.0-only OR LicenseRef-Commercial` 标识。
+`package.json` 按 RT-Thread 软件包索引惯例以 `GPL-2.0` 标注开源选项，商业选项由本文和
+商业许可说明明确。RT-Thread、芯片 SDK 和工程中的其他依赖仍适用各自的许可协议。
+
+## 目录
+
+| 目录 / 文件 | 职责 |
+| --- | --- |
+| `include/`、`src/` | 平台无关的 Fault 协议核 |
+| `ports/` | 裸机 polling 封装及 BSP 专用适配 |
+| `arch/`、`backtrace/` | 架构栈回溯适配与公共接口 |
+| `coredump/` | CoreDump 实现、示例和文档 |
+| `Kconfig`、`SConscript` | 软件包配置和 RT-Thread 构建入口 |
+| `package.json` | 软件包元数据，latest 指向 main 分支 |
+| `tests/` | C89 主机测试及独立软件包检查 |
+| `docs/limitations.md` | 支持边界与验收要求 |
+
+## RT-Thread 接入
+
+开发时可在 BSP 工程根目录直接获取软件包：
+
+```sh
+git clone https://github.com/Real-Thread/ms-probe.git packages/ms-probe
+```
+
+在上级 Kconfig 中按工程实际路径引入本包，例如 BSP 根目录的 Kconfig：
+
+```kconfig
+rsource "packages/ms-probe/Kconfig"
+```
+
+上级 SConscript 加载本包的 `SConscript`。如果工程的 packages 构建脚本已自动扫描软件包，
+不重复手工加载。包内使用相对路径和 `rsource`，不依赖原 RT-Thread utilities 路径。
+
+通过 menuconfig 打开 `PKG_USING_MS_PROBE`，它会选择原组件开关 `RT_USING_MICROSCOPE`；
+按需启用 `RT_USING_SCOPE`、`RT_USING_STACK_BACKTRACE` 或 `RT_USING_COREDUMP`。
+既有工程也可继续直接启用 `RT_USING_MICROSCOPE`。所有诊断功能默认关闭。
+用 `scons --pyconfig-silent` 生成配置，不手工修改 `rtconfig.h`。
+
+`package.json` 提供 RT-Thread 软件包下载元数据，当前只声明 latest/main，不创建虚构的
+发布标签。本次不包含向公共软件包索引注册的提交；上述直接克隆方式不依赖索引注册。
+
+在 Microscope 主机工程中，本包作为 Git submodule 固定版本：
+
+```sh
+git submodule update --init --recursive ms-probe
+```
+
+## BSP 适配
+
+`ports/` 下保留四个 BSP 的 Microscope 专用源文件、汇编入口和链接工作区：
+
+| 目录 | BSP 标识 | 工具链 | 初始化入口 |
+| --- | --- | --- | --- |
+| `stm32f407-rt-spark/` | `SOC_STM32F407ZG` | `gcc` | `ms_scope_stm32_probe_init()` |
+| `qemu-mps3-an536/` | `SOC_QEMU_MPS3_AN536` | `gcc` | `ms_scope_rtthread_init()` |
+| `kf32a158-evb/` | `SOC_KF32A158` | `kf32-gcc` | `ms_scope_kf32_probe_init()` |
+| `s32k3-core/` | `SOC_FAMILY_S32K3` | `gcc` | `ms_scope_s32k3_probe_init()` |
+
+Kconfig 根据 BSP 标识加载对应默认配置；SCons 仅构建已启用且工具链匹配的端口。
+没有匹配 BSP 时只构建通用协议核与裸机 I/O 封装，调用方通过 `ms_probe_config`
+提供 Fault ops、静态白名单、Context 和独立工作区。
+
+迁移既有 BSP 时，删除 BSP 中原有 `ms_scope_*` 源文件和重复的 Scope Kconfig 定义，
+同时去掉旧 include 路径和链接片段注册，防止重复符号或重复链接。
+BSP 仍提供 RT-Thread/芯片头文件、串口初始化、时钟、异常向量接管和正常启动阶段的
+初始化调用；本组件不包含通用 BSP 驱动、RTOS 或厂商 SDK。
+
+- STM32 和 S32K3 必须保留原 `board.c` 中的早期 Probe 初始化调用。
+- KF32 必须保留串口初始化和 `ms_scope_kf32_probe_init()` 的早期调用，失败时停止启动；
+  仅支持 `RT_CPUS_NR=1`。
+- QEMU 必须保留组件初始化表中的 `ms_scope_rtthread_init()`；
+  `linker_scripts/reference.lds` 是原 BSP 完整链接脚本的参考副本，不自动加入链接。
+  BSP 主链接脚本必须保留其 `SCOPE_RAM`、`.ms_scope_workspace` 和大小断言。
+- STM32、KF32、S32K3 的 Scope 链接片段由组件添加；BSP 主链接脚本必须排除已保留的
+  Scope RAM，不能让正常堆栈、数据或 MPU 配置再次占用该区域。
+
+## 验证与边界
+
+```sh
+make -C tests test
+python3 -m unittest discover -s tests -p 'test_package.py' -v
+make -C tests clean
+```
+
+主机 C 测试使用 `-std=c89 -pedantic -Wall -Wextra -Werror`。
+配置检查需要 `kconfiglib`；可使用 Env 的 Python venv，或安装 `tests/requirements.txt`。
+GitHub Actions 在独立检出中执行相同测试，不需要主机插件、固件 ELF 或父仓库。
+
+Fault 路径不得调用 RTOS、设备驱动、锁、堆、日志、阻塞等待或系统 Tick。
+Probe 不恢复业务调度，诊断结束后需要复位。生产构建必须关闭组件和 Fault 注入。
+本次初始化不代表新的实体板、多核或工具链验收；独立使用前的边界和开放项见
+[支持边界](docs/limitations.md)。主机 `ms` / `ms-cli` 和 Env WebUI 不包含在本包中。
