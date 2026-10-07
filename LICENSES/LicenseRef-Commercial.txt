@@ -1,0 +1,12 @@
+ms-probe Commercial Licensing
+
+ms-probe is available under GPL-2.0 or an alternative commercial license
+from Shanghai Real-Thread Electronic Technology Co., Ltd.
+
+To obtain a commercial license, contact business@rt-thread.com.
+Commercial use under this alternative is governed by a separate written
+agreement with the licensor. This notice does not itself grant a commercial
+license or replace the terms of such an agreement.
+
+The GPL-2.0 option is described in the repository's LICENSE file.
+Copyright notices in individual source files are retained.

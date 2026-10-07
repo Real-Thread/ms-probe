@@ -1,0 +1,63 @@
+config RT_SCOPE_STM32F407_PORT
+    bool
+    default y
+    select BSP_USING_USB_TO_USART
+
+config RT_SCOPE_DEVICE_ID
+    hex "Microscope Scope device ID"
+    default 0x00000413
+
+config RT_SCOPE_EMERGENCY_STACK_SIZE
+    int "Microscope Scope emergency stack size"
+    range 1024 3072
+    default 2048
+    help
+        The stack and all Probe state must fit the BSP's reserved 8 KiB
+        Scope workspace. The GNU linker rejects configurations which exceed it.
+
+config RT_SCOPE_READ_REGION_START
+    hex
+    default 0x20000000
+
+config RT_SCOPE_READ_REGION_SIZE
+    hex
+    default 0x0001E000
+
+config RT_SCOPE_SECONDARY_READ_REGION_START
+    hex
+    default 0x10000000
+
+config RT_SCOPE_SECONDARY_READ_REGION_SIZE
+    hex
+    default 0x00010000
+
+config RT_SCOPE_TERTIARY_READ_REGION_START
+    hex
+    default 0x08000000
+
+config RT_SCOPE_TERTIARY_READ_REGION_SIZE
+    hex
+    default 0x00100000
+
+config RT_SCOPE_STM32_SERVICE_IWDG
+    bool "Service IWDG in Microscope Scope Fault mode"
+    default y
+    help
+        Reload IWDG on every Probe polling iteration. This does not start IWDG.
+        WWDG and external watchdogs require a separate board policy.
+
+config RT_SCOPE_STM32_TAKE_MEMMANAGE
+    bool "Route MemManage Fault to Microscope Scope"
+    default n
+    help
+        This bypasses the existing RT-Thread OSA/MPU MemManage recovery path.
+        Enable it only when every MemManage Fault is terminal.
+
+config RT_SCOPE_USING_FAULT_INJECTION
+    bool "Enable unsafe Scope Fault injection command"
+    depends on RT_USING_MSH
+    default n
+    help
+        Export the msfault command for diagnostic verification. This command
+        intentionally executes an undefined instruction and must remain
+        disabled in production configurations.

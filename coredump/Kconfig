@@ -1,0 +1,43 @@
+# Enable CoreDump.
+config RT_USING_COREDUMP
+    bool "Enable CoreDump support"
+    default n
+    help
+        Enable the CoreDump feature to capture crash information for debugging.
+
+# CoreDump related configuration menu.
+menu "CoreDump Configuration"
+    depends on RT_USING_COREDUMP
+
+    # Target architecture selection.
+    choice
+        prompt "Target architecture for CoreDump"
+        default RT_COREDUMP_ARCH_ARMV7M
+        help
+            Select the target architecture for CoreDump support.
+
+        config RT_COREDUMP_ARCH_TRICORE
+            bool "TriCore architecture"
+            help
+                Enable CoreDump for the TriCore architecture (e.g. Infineon TC2XX/TC3XX).
+
+        config RT_COREDUMP_ARCH_ARMV7M
+            bool "ARMv7-M architecture"
+            help
+                Enable CoreDump for the ARMv7-M architecture (e.g., Cortex-M3/M4/M7).
+
+        config RT_COREDUMP_ARCH_AARCH64
+            bool "AArch64 architecture"
+            help
+                Enable CoreDump for the AArch64 architecture (e.g., Cortex-A53/A72).
+
+    endchoice
+
+    # Test cases for CoreDump.
+    config RT_USING_COREDUMP_TESTCASE
+        bool "Enable CoreDump test cases"
+        default n
+        help
+            Enable test cases to verify CoreDump functionality.
+
+endmenu

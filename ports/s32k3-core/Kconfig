@@ -1,0 +1,88 @@
+config RT_SCOPE_S32K3_PORT
+    bool
+    default y
+    select BSP_USING_UART
+
+choice
+    prompt "Microscope Scope Fault transport"
+    default RT_SCOPE_S32K3_UART3 if BOARD_S32K3X4_EVB
+    default RT_SCOPE_S32K3_UART0
+
+config RT_SCOPE_S32K3_UART0
+    bool "LPUART0 (VCU/core PA27/PA28)"
+    select BSP_USING_UART0
+
+config RT_SCOPE_S32K3_UART3
+    bool "LPUART3 (EVB PD2/PD3)"
+    select BSP_USING_UART3
+
+endchoice
+
+config RT_SCOPE_DEVICE_ID
+    hex "Microscope Scope device ID"
+    default 0x00000344
+
+config RT_SCOPE_EMERGENCY_STACK_SIZE
+    int "Microscope Scope emergency stack size"
+    range 1024 4096
+    default 2048
+    help
+        The stack and all Probe state must fit the reserved 8 KiB
+        Scope workspace. The linker rejects configurations which
+        exceed it.
+
+config RT_SCOPE_READ_REGION_START
+    hex
+    default 0x00400000
+
+config RT_SCOPE_READ_REGION_SIZE
+    hex
+    default 0x003CE000
+
+config RT_SCOPE_SECONDARY_READ_REGION_START
+    hex
+    default 0x20400000
+
+config RT_SCOPE_SECONDARY_READ_REGION_SIZE
+    hex
+    default 0x0004E000
+
+config RT_SCOPE_TERTIARY_READ_REGION_START
+    hex
+    default 0x20000000
+
+config RT_SCOPE_TERTIARY_READ_REGION_SIZE
+    hex
+    default 0x00020000
+
+config RT_SCOPE_S32K3_FOURTH_READ_REGION_START
+    hex
+    default 0x00000000
+
+config RT_SCOPE_S32K3_FOURTH_READ_REGION_SIZE
+    hex
+    default 0x00010000
+
+config RT_SCOPE_S32K3_FIFTH_READ_REGION_START
+    hex
+    default 0x10000000
+
+config RT_SCOPE_S32K3_FIFTH_READ_REGION_SIZE
+    hex
+    default 0x00010000
+
+config RT_SCOPE_S32K3_TAKE_MEMMANAGE
+    bool "Route MemManage Fault to Microscope Scope"
+    default n
+    help
+        This bypasses the existing RT-Thread MPU recovery path.
+        Enable it only when every MemManage Fault is terminal.
+
+config RT_SCOPE_USING_FAULT_INJECTION
+    bool "Enable unsafe Scope Fault injection command"
+    depends on RT_USING_MSH
+    default n
+    help
+        Export the msfault command for diagnostic verification. This
+        command intentionally executes an undefined instruction and
+        must remain disabled in production configurations.

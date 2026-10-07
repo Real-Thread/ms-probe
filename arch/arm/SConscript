@@ -1,0 +1,12 @@
+import os
+from building import *
+
+cwd = GetCurrentDir()
+group = []
+
+if GetDepend('ARCH_ARM_CORTEX_M'):
+    group = SConscript(os.path.join('cortex-m', 'SConscript'))
+elif GetDepend('ARCH_ARM_CORTEX_R52'):
+    group = SConscript(os.path.join('cortex-r', 'SConscript'))
+
+Return('group')

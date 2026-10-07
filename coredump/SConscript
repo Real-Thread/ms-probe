@@ -1,0 +1,29 @@
+from building import *
+
+Import('rtconfig')
+
+cwd     = GetCurrentDir()
+src     = Glob('src/*.c')
+path    = [cwd + '/include']
+
+if rtconfig.CPU == 'cortex-m7' or rtconfig.CPU == 'cortex-m4' or rtconfig.CPU == 'cortex-m3' or rtconfig.CPU == 'cortex-m33':
+	path += [cwd + '/arch/arm']
+elif rtconfig.CPU == 'arch_tc3':
+	path += [cwd + '/arch/tricore']
+elif rtconfig.ARCH == 'aarch64':
+	src += Glob('arch/aarch64/*.c')
+	path += [cwd + '/arch/aarch64']
+
+if GetDepend(['RT_COREDUMP_ARCH_AARCH64']):
+    src += Glob('port/rtt_lwp_port.c')
+elif GetDepend(['RT_COREDUMP_ARCH_TRICORE']):
+    src += Glob('port/rtt_tricore_port.c')
+elif GetDepend(['RT_COREDUMP_ARCH_ARMV7M']):
+    src += Glob('arch/arm/port/coredump_arch_port.c')
+
+if GetDepend(['RT_USING_COREDUMP_TESTCASE']):
+    src += Glob('testcases/*.c')
+
+group = DefineGroup('coredump', src, depend = ['RT_USING_COREDUMP'], CPPPATH = path)
+
+Return('group')

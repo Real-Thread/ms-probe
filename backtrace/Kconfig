@@ -1,0 +1,16 @@
+menuconfig RT_USING_STACK_BACKTRACE
+    bool "Enable stack backtrace"
+    depends on RT_USING_MICROSCOPE
+    default n
+    help
+        Capture and print stack backtraces through a common microscope API.
+        An architecture port must provide the stack unwind implementation.
+
+if RT_USING_STACK_BACKTRACE
+
+config RT_STACK_BACKTRACE_DEPTH_MAX
+    int "Maximum stack backtrace depth"
+    range 1 64
+    default 8
+
+endif

@@ -53,3 +53,9 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# Host-side package checks
+tests/test_ms_probe
+__pycache__/
+.pytest_cache/
+.venv/

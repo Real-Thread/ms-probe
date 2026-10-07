@@ -1,0 +1,33 @@
+import os
+from building import *
+
+Import('rtconfig')
+
+cwd = GetCurrentDir()
+group = []
+
+ports = (
+    ('stm32f407-rt-spark', 'RT_SCOPE_STM32F407_PORT', 'gcc',
+     ['STM32F407xx', 'RT_SCOPE_STM32_PORT_AVAILABLE'], 'ms_scope.lds'),
+    ('qemu-mps3-an536', 'RT_SCOPE_QEMU_MPS3_AN536_PORT', 'gcc', [], None),
+    ('kf32a158-evb', 'RT_SCOPE_KF32A158_PORT', 'kf32-gcc',
+     ['KF32A158SQV', 'RT_SCOPE_KF32_PORT_AVAILABLE'], 'ms_scope.ld'),
+    ('s32k3-core', 'RT_SCOPE_S32K3_PORT', 'gcc',
+     ['RT_SCOPE_S32K3_PORT_AVAILABLE'], 'ms_scope.lds'),
+)
+
+for name, dependency, platform, defines, linker in ports:
+    if not GetDepend(dependency) or rtconfig.PLATFORM != platform:
+        continue
+    path = os.path.join(cwd, name)
+    src = Glob(os.path.join(name, '*.c')) + Glob(os.path.join(name, '*.S'))
+    flags = ''
+    if linker:
+        linker_path = os.path.join(path, 'linker_scripts', linker)
+        flags = (' -T ' if platform == 'kf32-gcc' else ' -Wl,-T,') + linker_path
+    group += DefineGroup('MicroscopePort-' + name, src,
+                         depend=['RT_USING_SCOPE', dependency],
+                         CPPPATH=[path, os.path.join(cwd, '..', 'include')],
+                         CPPDEFINES=defines, LINKFLAGS=flags)
+
+Return('group')

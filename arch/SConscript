@@ -1,0 +1,14 @@
+import os
+from building import *
+
+Import('rtconfig')
+
+cwd = GetCurrentDir()
+group = []
+
+if GetDepend('RT_USING_STACK_BACKTRACE'):
+    port = os.path.join(rtconfig.ARCH, 'SConscript')
+    if os.path.isfile(os.path.join(cwd, port)):
+        group = SConscript(port)
+
+Return('group')

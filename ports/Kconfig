@@ -1,0 +1,15 @@
+if SOC_STM32F407ZG
+rsource "stm32f407-rt-spark/Kconfig"
+endif
+
+if SOC_QEMU_MPS3_AN536
+rsource "qemu-mps3-an536/Kconfig"
+endif
+
+if SOC_KF32A158
+rsource "kf32a158-evb/Kconfig"
+endif
+
+if SOC_FAMILY_S32K3
+rsource "s32k3-core/Kconfig"
+endif

@@ -1,0 +1,55 @@
+config RT_SCOPE_KF32A158_PORT
+    bool
+    default y
+    select BSP_USING_UART
+    select BSP_USING_UART0
+    help
+        This development-only port exclusively takes NMI, HardFault,
+        StackFault, AriFault, SRAM/DPRAM/Cache/Flash ECC and BUS Fault into
+        ms-probe. The current port accepts RT_CPUS_NR=1 only; multi-core
+        builds fail at compile time.
+
+config RT_SCOPE_DEVICE_ID
+    hex "Microscope Scope device ID"
+    default 0x0000A158
+
+config RT_SCOPE_EMERGENCY_STACK_SIZE
+    int "Microscope Scope emergency stack size"
+    range 1024 4096
+    default 2048
+    help
+        The stack and all Probe state must fit the reserved 8 KiB Scope
+        workspace. The linker rejects configurations which exceed it.
+
+config RT_SCOPE_READ_REGION_START
+    hex
+    default 0x10000000
+
+config RT_SCOPE_READ_REGION_SIZE
+    hex
+    default 0x0002E000
+
+config RT_SCOPE_SECONDARY_READ_REGION_START
+    hex
+    default 0x10030000
+
+config RT_SCOPE_SECONDARY_READ_REGION_SIZE
+    hex
+    default 0x00010000
+
+config RT_SCOPE_TERTIARY_READ_REGION_START
+    hex
+    default 0x00000000
+
+config RT_SCOPE_TERTIARY_READ_REGION_SIZE
+    hex
+    default 0x00200000
+
+config RT_SCOPE_USING_FAULT_INJECTION
+    bool "Enable unsafe Scope Fault injection command"
+    depends on RT_SCOPE_KF32A158_PORT && RT_USING_MSH
+    default n
+    help
+        Export the fault_test command for diagnostic verification. This
+        command deliberately raises HardFault and must remain disabled in
+        production configurations.
