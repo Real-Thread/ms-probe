@@ -1127,7 +1127,7 @@ static void ms_probe_protocol_step(struct ms_probe *probe)
     ms_probe_u16 remaining;
     ms_probe_u16 length;
     int written;
-    static const ms_probe_u8 prompt[2] = {'-', '>'};
+    static const ms_probe_u8 prompt[4] = {'-', '>', '\r', '\n'};
 
     if (probe == NULL)
     {
@@ -1163,7 +1163,8 @@ static void ms_probe_protocol_step(struct ms_probe *probe)
     }
     if (probe->prompt_requests > 0U)
     {
-        if (ms_probe_queue_bytes(probe, prompt, 2U) == 0)
+        if (ms_probe_queue_bytes(probe, prompt,
+                                  (ms_probe_u16)sizeof(prompt)) == 0)
         {
             probe->prompt_requests--;
         }

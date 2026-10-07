@@ -327,11 +327,10 @@ static int test_protocol_flow(void)
     ms_probe_activate(&probe, 7U);
     if (test_expect(test_drain(&probe, 16U) == 0,
                     "initial prompt drain") != 0 ||
-        test_expect(port.output_length == 2U,
+        test_expect(port.output_length == 4U,
                     "initial prompt emitted") != 0 ||
-        test_expect(port.output[0] == (ms_probe_u8)'-' &&
-                    port.output[1] == (ms_probe_u8)'>',
-                    "initial prompt bytes") != 0)
+        test_expect(memcmp(port.output, "->\r\n", 4U) == 0,
+                    "initial prompt includes CRLF") != 0)
     {
         return -1;
     }
@@ -339,11 +338,70 @@ static int test_protocol_flow(void)
     test_clear_output(&port);
     line_breaks[0] = (ms_probe_u8)'\r';
     line_breaks[1] = (ms_probe_u8)'\n';
+    ms_probe_input(&probe, &line_breaks[1], 1U);
+    if (test_expect(test_drain(&probe, 16U) == 0,
+                    "LF prompt drain") != 0 ||
+        test_expect(port.output_length == 4U &&
+                    memcmp(port.output, "->\r\n", 4U) == 0,
+                    "LF response includes CRLF") != 0)
+    {
+        return -1;
+    }
+
+    test_clear_output(&port);
+    ms_probe_input(&probe, line_breaks, 1U);
+    if (test_expect(port.output_length == 0U,
+                    "CR prompt is queued asynchronously") != 0 ||
+        test_expect(test_drain(&probe, 16U) == 0,
+                    "CR prompt drain") != 0 ||
+        test_expect(port.output_length == 4U &&
+                    memcmp(port.output, "->\r\n", 4U) == 0,
+                    "CR response includes CRLF") != 0)
+    {
+        return -1;
+    }
+
+    test_clear_output(&port);
     ms_probe_input(&probe, line_breaks, 2U);
     if (test_expect(test_drain(&probe, 16U) == 0,
                     "CRLF prompt drain") != 0 ||
-        test_expect(port.output_length == 2U,
-                    "CRLF requests one prompt") != 0)
+        test_expect(port.output_length == 4U &&
+                    memcmp(port.output, "->\r\n", 4U) == 0,
+                    "CRLF requests one complete prompt") != 0)
+    {
+        return -1;
+    }
+
+    test_clear_output(&port);
+    port.write_limit = 1U;
+    ms_probe_input(&probe, line_breaks, 1U);
+    if (test_expect(test_drain(&probe, 16U) == 0,
+                    "split CR prompt drain with one-byte TX") != 0 ||
+        test_expect(port.output_length == 4U &&
+                    memcmp(port.output, "->\r\n", 4U) == 0,
+                    "partial TX preserves prompt and CRLF") != 0)
+    {
+        return -1;
+    }
+    ms_probe_input(&probe, &line_breaks[1], 1U);
+    if (test_expect(test_drain(&probe, 16U) == 0,
+                    "split LF prompt drain") != 0 ||
+        test_expect(port.output_length == 4U &&
+                    memcmp(port.output, "->\r\n", 4U) == 0,
+                    "split CRLF emits no duplicate prompt") != 0)
+    {
+        return -1;
+    }
+    port.write_limit = 3U;
+
+    test_clear_output(&port);
+    line_breaks[1] = (ms_probe_u8)'\r';
+    ms_probe_input(&probe, line_breaks, 2U);
+    if (test_expect(test_drain(&probe, 16U) == 0,
+                    "repeated CR prompt drain") != 0 ||
+        test_expect(port.output_length == 8U &&
+                    memcmp(port.output, "->\r\n->\r\n", 8U) == 0,
+                    "each CR emits a complete prompt line") != 0)
     {
         return -1;
     }
