@@ -19,8 +19,9 @@ Fault 注入，禁止把本包作为生产故障恢复或 AUTOSAR 合规能力�
 - QEMU 的完整链接脚本只作为参考；实际 BSP 必须独立确认 SCOPE_RAM、工作区和容量断言。
 - 实体板必须验证 UART partial I/O、真实 Watchdog 时序、Fault Context、嵌套 Fault 和复位生命周期。
 - 白名单读取本身可能触发嵌套 Fault；只有目标端口实现并验证了受保护读取，才能按其能力使用。
-- Cortex-M、Cortex-R52 和 KungFu32 栈回溯端口及约束见 [架构说明](../arch/README.md)。
-- CoreDump 的 Kconfig 架构选项不代表每种架构均有完整实现；必须检查目标架构的实际源码和链接。
+- Fault Context 和异常入口由 ports/ 中的 Probe 端口提供，不能从其他架构的 ABI 推测。
+- 本包不实现设备端栈回溯或 ELF CoreDump，也不提供其旧配置和 C API。
+  主机根据 Context、栈内存及 ELF 分析；离线保存使用主机的 .mssession 会话。
 
 ## 本次初始化验证
 

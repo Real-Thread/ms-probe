@@ -9,7 +9,9 @@
 ## 实现约束
 
 - 通用协议核位于 include/ 与 src/，不含芯片寄存器地址或 RTOS 依赖。
-- BSP 适配只放在 ports/，架构回溯放在 arch/，公共 Backtrace 和 CoreDump 独立维护。
+- BSP 适配、异常入口和 Fault Context 编码只放在 ports/。
+- 本包只包含 Probe，不引入独立设备端 Backtrace、CoreDump 或其 arch/ 实现。
+  主机根据 Probe 导出的 Context、栈内存和 ELF 完成回溯，设备端不执行该分析。
 - Fault 路径采用 C89，不调用设备驱动、锁、堆、日志、阻塞等待或系统 Tick。
 - Probe 不恢复业务调度，退出需要复位；生产配置必须关闭所有诊断和 Fault 注入。
 - 未经明确验证，不声明实体板、多核、Watchdog、Reset 或新的交叉工具链支持。

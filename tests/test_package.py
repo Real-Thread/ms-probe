@@ -28,6 +28,9 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(metadata["enable"], "PKG_USING_MS_PROBE")
         self.assertEqual(metadata["license"], "GPL-2.0")
         self.assertEqual(metadata["category"], "tools")
+        self.assertIn("probe", metadata["keywords"])
+        self.assertNotIn("backtrace", metadata["keywords"])
+        self.assertNotIn("coredump", metadata["keywords"])
         self.assertEqual(metadata["repository"], "https://github.com/Real-Thread/ms-probe")
         self.assertEqual(metadata["site"], [{
             "version": "latest",
@@ -44,7 +47,9 @@ class PackageTests(unittest.TestCase):
         self.assertIn("business@rt-thread.com", commercial)
         self.assertIn("separate written", commercial)
         sources = [path for path in ROOT.rglob("*") if path.suffix in {".c", ".h", ".S"}]
-        self.assertGreater(len(sources), 30)
+        self.assertTrue({ROOT / "include/ms_probe.h", ROOT / "src/ms_probe.c",
+                         ROOT / "ports/ms_scope_baremetal.h",
+                         ROOT / "ports/ms_scope_baremetal.c"}.issubset(sources))
         for path in sources:
             with self.subTest(path=path.relative_to(ROOT)):
                 text = path.read_text(encoding="utf-8")
@@ -54,7 +59,7 @@ class PackageTests(unittest.TestCase):
                 self.assertNotIn("Republication, copying or redistribution", text)
 
     def test_document_links_are_package_local(self):
-        links = 0
+        links = set()
         for path in ROOT.rglob("*.md"):
             for target in re.findall(r"!?\[[^\]]*\]\(([^)]+)\)", path.read_text(encoding="utf-8")):
                 target = target.split("#", 1)[0]
@@ -64,8 +69,10 @@ class PackageTests(unittest.TestCase):
                     resolved = (path.parent / target).resolve()
                     self.assertTrue(resolved.is_relative_to(ROOT), "Link depends on the parent repo")
                     self.assertTrue(resolved.exists(), "Link target is missing")
-                    links += 1
-        self.assertGreater(links, 5)
+                    links.add(resolved.relative_to(ROOT).as_posix())
+        self.assertTrue({"LICENSE", "LICENSES/LicenseRef-Commercial.txt",
+                         "tests/qemu-vexpress-a9/README.md",
+                         "docs/limitations.md"}.issubset(links))
 
     def _groups(self, enabled, platform="gcc"):
         current = ROOT
@@ -112,6 +119,32 @@ class PackageTests(unittest.TestCase):
             ROOT / "src/ms_probe.c", ROOT / "ports/ms_scope_baremetal.c",
         })
 
+    def test_package_contains_only_probe_components(self):
+        for name in ("arch", "backtrace", "coredump"):
+            with self.subTest(directory=name):
+                self.assertFalse((ROOT / name).exists())
+        retired_header = re.compile(
+            r'^\s*#\s*include\s*[<"](?:rt_backtrace|backtrace_internal|'
+            r'coredump|coredump_arch|elf_define)\.h[>"]', re.MULTILINE,
+        )
+        for directory in ("include", "src", "ports"):
+            for path in (ROOT / directory).rglob("*"):
+                if path.suffix in {".c", ".h", ".S"}:
+                    with self.subTest(source=path.relative_to(ROOT)):
+                        self.assertIsNone(retired_header.search(path.read_text(encoding="utf-8")))
+
+    def test_retired_component_switches_do_not_add_sources(self):
+        switches = {"RT_USING_STACK_BACKTRACE", "RT_USING_COREDUMP",
+                    "RT_USING_COREDUMP_TESTCASE"}
+        self.assertEqual(self._groups(switches), [])
+        groups = self._groups(switches | {"RT_USING_SCOPE"})
+        self.assertEqual([item["name"] for item in groups], ["MicroscopeScope"])
+        for name, _soc, port, platform in TARGETS:
+            with self.subTest(port=name):
+                enabled = {"RT_USING_SCOPE", port}
+                self.assertEqual(self._groups(enabled | switches, platform),
+                                 self._groups(enabled, platform))
+
     def test_scons_selects_only_the_matching_port(self):
         for name, _soc, symbol, platform in TARGETS:
             with self.subTest(port=name):
@@ -147,25 +180,25 @@ class PackageTests(unittest.TestCase):
                 )
                 wrapper.write_text(definitions + '\nrsource "{}"\n'.format(ROOT / "Kconfig"), encoding="utf-8")
                 config = kconfiglib.Kconfig(str(wrapper), warn=False)
-                for symbol in ("PKG_USING_MS_PROBE", "RT_USING_MICROSCOPE", "RT_USING_SCOPE",
-                               "RT_USING_STACK_BACKTRACE", "RT_USING_COREDUMP"):
+                for symbol in ("PKG_USING_MS_PROBE", "RT_USING_MICROSCOPE", "RT_USING_SCOPE"):
                     self.assertEqual(config.syms[symbol].str_value, "n")
+                for symbol in ("RT_USING_STACK_BACKTRACE", "RT_STACK_BACKTRACE_DEPTH_MAX",
+                               "RT_USING_COREDUMP", "RT_USING_COREDUMP_TESTCASE",
+                               "RT_COREDUMP_ARCH_ARMV7M", "RT_COREDUMP_ARCH_TRICORE",
+                               "RT_COREDUMP_ARCH_AARCH64"):
+                    self.assertNotIn(symbol, config.syms)
                 config.syms["PKG_USING_MS_PROBE"].set_value("y")
                 self.assertEqual(config.syms["RT_USING_MICROSCOPE"].str_value, "y")
                 self.assertEqual(config.syms["PKG_MS_PROBE_PATH"].str_value, "/packages/tools/ms-probe")
                 self.assertEqual(config.syms["PKG_MS_PROBE_VER"].str_value, "latest")
                 self.assertEqual(config.syms["PKG_USING_MS_PROBE_LATEST_VERSION"].str_value, "y")
                 config.syms["RT_USING_SCOPE"].set_value("y")
-                config.syms["RT_USING_STACK_BACKTRACE"].set_value("y")
-                config.syms["RT_USING_COREDUMP"].set_value("y")
                 self.assertEqual(config.syms[port].str_value, "y")
                 self.assertEqual(config.syms["RT_SCOPE_MAX_PAYLOAD"].str_value, "256")
                 self.assertEqual(config.syms["RT_SCOPE_USING_FAULT_INJECTION"].str_value, "n")
                 config.syms["PKG_USING_MS_PROBE"].set_value("n")
                 self.assertEqual(config.syms["RT_USING_MICROSCOPE"].str_value, "n")
                 self.assertEqual(config.syms["RT_USING_SCOPE"].str_value, "n")
-                self.assertEqual(config.syms["RT_USING_STACK_BACKTRACE"].str_value, "n")
-                self.assertEqual(config.syms["RT_USING_COREDUMP"].str_value, "n")
                 self.assertEqual(config.syms[port].str_value, "n")
                 config.syms["RT_USING_MICROSCOPE"].set_value("y")
                 self.assertEqual(config.syms["RT_USING_SCOPE"].str_value, "y")
@@ -183,6 +216,11 @@ class PackageTests(unittest.TestCase):
                 'rsource "{}"\nendif\n'.format(ROOT / "Kconfig.options"), encoding="utf-8",
             )
             config = kconfiglib.Kconfig(str(wrapper), warn=False)
+            for symbol in ("RT_USING_STACK_BACKTRACE", "RT_STACK_BACKTRACE_DEPTH_MAX",
+                           "RT_USING_COREDUMP", "RT_USING_COREDUMP_TESTCASE",
+                           "RT_COREDUMP_ARCH_ARMV7M", "RT_COREDUMP_ARCH_TRICORE",
+                           "RT_COREDUMP_ARCH_AARCH64"):
+                self.assertNotIn(symbol, config.syms)
             config.syms["PKG_USING_MS_PROBE"].set_value("y")
             self.assertEqual(config.syms["RT_USING_MICROSCOPE"].str_value, "y")
             config.syms["RT_USING_SCOPE"].set_value("y")

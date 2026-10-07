@@ -1,9 +1,13 @@
 # ms-probe
 
-ms-probe 是 Microscope 的独立嵌入式诊断仓库和 RT-Thread 软件包，包含全部 MCU 端代码，
+ms-probe 是 Microscope 的独立嵌入式诊断 Probe 仓库和 RT-Thread 软件包，
 可独立克隆、配置和测试，不依赖 Microscope 主机仓库。`src/ms_probe.c` 和 `include/ms_probe.h` 是平台无关的
-Fault 协议核；`ports/ms_scope_baremetal.*` 提供 polling I/O 公共封装；`arch/`、
-`backtrace/`、`coredump/` 提供架构适配、栈回溯和转储实现。
+Fault 协议核；`ports/ms_scope_baremetal.*` 提供 polling I/O 公共封装，BSP 专用端口
+负责异常入口、Fault Context 编码、串口、计时、白名单和可选 Watchdog / Reset。
+
+本包不包含独立的设备端 Backtrace、CoreDump 或其 `arch/` 实现。Probe 只固化并导出
+Context 和白名单内存；Microscope 主机 `ms` 根据这些数据和固件 ELF 完成栈回溯，
+并保存 `.mssession` 离线会话。这不等同于设备端生成 ELF core dump。
 
 ## 许可协议
 
@@ -20,8 +24,6 @@ Fault 协议核；`ports/ms_scope_baremetal.*` 提供 polling I/O 公共封装�
 | --- | --- |
 | `include/`、`src/` | 平台无关的 Fault 协议核 |
 | `ports/` | 裸机 polling 封装及 BSP 专用适配 |
-| `arch/`、`backtrace/` | 架构栈回溯适配与公共接口 |
-| `coredump/` | CoreDump 实现、示例和文档 |
 | `Kconfig`、`Kconfig.options`、`SConscript` | 独立配置入口、共享诊断选项和 RT-Thread 构建入口 |
 | `package.json` | 软件包元数据，latest 指向 main 分支 |
 | `tests/` | C89 主机测试、独立包检查及开发 QEMU 夹具 |
@@ -41,7 +43,7 @@ menuconfig
 ```
 
 下载目录为 `packages/ms-probe-latest`。第二次 menuconfig 从包内 `Kconfig.options` 加载
-Microscope、Scope、Backtrace、CoreDump 和 BSP 专用选项，不必手工修改上级 Kconfig。
+Microscope、Scope 和 BSP 专用选项，不必手工修改上级 Kconfig。
 索引未合并或本机索引尚未更新时使用下面的直接克隆方式。
 
 ### 直接克隆
@@ -62,9 +64,19 @@ rsource "packages/ms-probe/Kconfig"
 不重复手工加载。包内使用相对路径和 `rsource`，不依赖原 RT-Thread utilities 路径。
 
 通过 menuconfig 打开 `PKG_USING_MS_PROBE`，它会选择原组件开关 `RT_USING_MICROSCOPE`；
-按需启用 `RT_USING_SCOPE`、`RT_USING_STACK_BACKTRACE` 或 `RT_USING_COREDUMP`。
-既有工程也可继续直接启用 `RT_USING_MICROSCOPE`。所有诊断功能默认关闭。
+按需启用 `RT_USING_SCOPE`。
+既有工程也可继续直接启用 `RT_USING_MICROSCOPE`。Scope Probe 和 Fault 注入默认关闭。
 用 `scons --pyconfig-silent` 生成配置，不手工修改 `rtconfig.h`。
+
+本包不再提供 `RT_USING_STACK_BACKTRACE`、`RT_USING_COREDUMP` 和 `rt_backtrace_*` /
+`coredump_*` 接口。既有工程若需要这些独立组件，应单独获取其实现；不要把它们当作
+Probe 的链接依赖。主机 `ms-cli backtrace` 不要求打开上述设备端开关。
+
+从旧版本迁移时，移除工程中对本包 `arch/`、`backtrace/`、`coredump/` 的 SConscript、
+Kconfig 和 include 路径引用。用 menuconfig 保存配置，再执行 `scons --pyconfig-silent`
+重新生成配置头；不保留旧 `RT_USING_STACK_BACKTRACE`、`RT_STACK_BACKTRACE_DEPTH_MAX`、
+`RT_USING_COREDUMP`、`RT_USING_COREDUMP_TESTCASE` 和 `RT_COREDUMP_ARCH_*` 配置。
+软件包构建入口只加载协议核、裸机封装和匹配的 BSP 端口，不再加载上述目录。
 
 `package.json` 提供 RT-Thread 软件包下载元数据，当前只声明 latest/main，不创建虚构的
 发布标签。直接克隆方式不依赖索引注册；索引与源码共享同一份包内诊断配置。

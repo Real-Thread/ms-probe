@@ -1,10 +1,11 @@
 menuconfig PKG_USING_MS_PROBE
-    bool "ms-probe: Microscope embedded diagnostic components"
+    bool "ms-probe: Microscope fault-state diagnostic probe"
     select RT_USING_MICROSCOPE
     default n
     help
         GPL-2.0 / commercial dual-licensed development diagnostics.
-        Scope, backtrace and coredump are configured below.
+        Scope protocol and BSP-specific options are configured below.
+        The host analyzes the exported Context and whitelisted memory.
         Disable this package and Fault injection in production builds.
 
 if PKG_USING_MS_PROBE

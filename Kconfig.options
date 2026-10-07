@@ -1,17 +1,15 @@
-menu "Microscope"
+menu "Microscope Probe"
 
 config RT_USING_MICROSCOPE
-    bool "Enable Microscope diagnostic components"
+    bool "Enable Microscope Probe integration"
     default y if PKG_USING_MS_PROBE
     default n
     help
-        Development-only diagnostic components. Disable these components,
+        Development-only Fault probe integration. The host analyzes the
+        exported Context and whitelisted memory. Disable this option,
         Scope and Fault injection in production configurations.
 
 if RT_USING_MICROSCOPE
-
-rsource "coredump/Kconfig"
-rsource "backtrace/Kconfig"
 
 menuconfig RT_USING_SCOPE
     bool "Enable Microscope Scope probe"
