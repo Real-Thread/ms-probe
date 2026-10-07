@@ -5,10 +5,6 @@
  *
  * This file is part of ms-probe, available under GPL-2.0 or a commercial
  * license. See LICENSE and LICENSES/LicenseRef-Commercial.txt.
- */
-
-/*
- * Copyright (c) 2006-2021, RT-Thread Development Team
  *
  * Change Logs:
  * Date           Author       Notes

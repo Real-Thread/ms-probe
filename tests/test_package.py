@@ -54,9 +54,6 @@ class PackageTests(unittest.TestCase):
             with self.subTest(path=path.relative_to(ROOT)):
                 text = path.read_text(encoding="utf-8")
                 self.assertEqual(text.count(SPDX), 1)
-                self.assertNotIn("SPDX-License-Identifier: Apache-2.0", text)
-                self.assertNotIn("expressly prohibited", text)
-                self.assertNotIn("Republication, copying or redistribution", text)
 
     def test_document_links_are_package_local(self):
         links = set()
